@@ -9,7 +9,8 @@ from textnode import (
         text_type_code,
         text_type_link,
         text_type_image,
-        text_node_to_html_node
+        text_node_to_html_node,
+        split_nodes_delimiter
 )
 
 class TestTextNode(unittest.TestCase):
@@ -64,6 +65,37 @@ class TestTextNode(unittest.TestCase):
         expectedLeafNode = LeafNode("img", None, {'src': 'http://example.com/image.jpg', 'alt': 'An example image' }) 
         self.assertEqual(expectedLeafNode, text_node_to_html_node(node))
 
+    def test_node_delimiter_code(self):
+        node = TextNode("An example `code block`", text_type_text)
+        expectedLeafNode = [
+            TextNode("An example ", text_type_text),
+            TextNode("code block", text_type_code),
+        ]
+        self.assertEqual(expectedLeafNode, split_nodes_delimiter([node], '`', text_type_code))
+
+    def test_node_delimiter_italic(self):
+        node = TextNode("An example piece of *italic text*", text_type_text)
+        expectedLeafNode = [
+            TextNode("An example piece of ", text_type_text),
+            TextNode("italic text", text_type_italic),
+        ]
+        self.assertEqual(expectedLeafNode, split_nodes_delimiter([node], "*", text_type_italic))
+
+    def test_node_delimiter_bold(self):
+        node = TextNode("An example piece of **bold text**", text_type_text)
+        expectedLeafNode = [
+            TextNode("An example piece of ", text_type_text),
+            TextNode("bold text", text_type_bold),
+        ]
+        self.assertEqual(expectedLeafNode, split_nodes_delimiter([node], "**", text_type_bold))
+
+    def test_node_delimiter_invalid_markdown(self):
+        node = TextNode("An example piece of *italic text", text_type_text)
+        expectedLeafNode = [
+            TextNode("An example piece of ", text_type_text),
+            TextNode("italic text", text_type_italic),
+        ]
+        self.assertEqual(expectedLeafNode, split_nodes_delimiter([node], "*", text_type_italic))
 
 if __name__ == "__main__":
     unittest.main()
