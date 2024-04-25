@@ -3,6 +3,9 @@ import unittest
 from htmlnode import LeafNode
 from textnode import (
         TextNode,
+        split_nodes_image,
+        split_nodes_link,
+        text_to_textnodes,
         text_type_text,
         text_type_bold,
         text_type_italic,
@@ -14,6 +17,7 @@ from textnode import (
 )
 
 class TestTextNode(unittest.TestCase):
+    maxDiff = None
     def test_eq(self):
         node = TextNode("This is a text node", text_type_bold, "google.com")
         node2 = TextNode("This is a text node", text_type_bold, "google.com")
@@ -89,13 +93,41 @@ class TestTextNode(unittest.TestCase):
         ]
         self.assertEqual(expectedLeafNode, split_nodes_delimiter([node], "**", text_type_bold))
 
-    def test_node_delimiter_invalid_markdown(self):
-        node = TextNode("An example piece of *italic text", text_type_text)
+    def test_node_images(self):
+        node = TextNode("This is text with an ![image](https://storage.googleapis.com/course_assets/zjjcJKZ.png) and ![another](https://storage.googleapis.com/course_assets/dfsdkjfd.png)", text_type_text)
         expectedLeafNode = [
-            TextNode("An example piece of ", text_type_text),
-            TextNode("italic text", text_type_italic),
+            TextNode("This is text with an ", text_type_text),
+            TextNode("image", text_type_image, "https://storage.googleapis.com/course_assets/zjjcJKZ.png"),
+            TextNode(" and ", text_type_text),
+            TextNode("another", text_type_image, "https://storage.googleapis.com/course_assets/dfsdkjfd.png")
         ]
-        self.assertEqual(expectedLeafNode, split_nodes_delimiter([node], "*", text_type_italic))
+        self.assertEqual(expectedLeafNode, split_nodes_image([node]))
+
+    def test_node_links(self):
+        node = TextNode("This is text with a [link](https://www.example.com) and [another](https://www.example.com/another)", text_type_text)
+        expectedLeafNode = [
+            TextNode("This is text with a ", text_type_text),
+            TextNode("link", text_type_link, "https://www.example.com"),
+            TextNode(" and ", text_type_text),
+            TextNode("another", text_type_link, "https://www.example.com/another")
+        ]
+        self.assertEqual(expectedLeafNode, split_nodes_link([node]))
+
+    def test_text_to_textnode(self):
+        text = "This is **text** with an *italic* word and a `code block` and an ![image](https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png) and a [link](https://boot.dev)"
+        expectedLeafNode = [
+            TextNode("This is ", text_type_text),
+            TextNode("text", text_type_bold),
+            TextNode(" with an ", text_type_text),
+            TextNode("italic", text_type_italic),
+            TextNode(" word and a ", text_type_text), 
+            TextNode("code block", text_type_code), 
+            TextNode(" and an ", text_type_text), 
+            TextNode("image", text_type_image, "https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/zjjcJKZ.png"), 
+            TextNode(" and a ", text_type_text), 
+            TextNode("link", text_type_link, "https://boot.dev") 
+        ]
+        self.assertEqual(expectedLeafNode, text_to_textnodes(text))
 
 if __name__ == "__main__":
     unittest.main()

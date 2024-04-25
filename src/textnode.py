@@ -1,5 +1,5 @@
 from htmlnode import LeafNode
-
+from markdown_formatter import extract_markdown_images, extract_markdown_links
 
 text_type_text = "text"
 text_type_bold = "bold"
@@ -43,19 +43,72 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
     for old_node in old_nodes:
         if old_node.text_type != text_type_text:
             new_nodes.append(old_node)
-        is_text = True
-        if delimiter != None:
-            nodes = old_node.text.split(delimiter)
-            delimiter_count = old_node.text.count(delimiter)
-            if delimiter_count % 2 != 0:
-                raise Exception(f"Unmatched {delimiter} in text.")
-            for node in nodes:
-                if node:
-                    if is_text:
-                        current_text_type = text_type_text
-                    else:
-                        current_text_type = text_type
-                    new_node = TextNode(node, current_text_type)
-                    new_nodes.append(new_node)
-                    is_text = False
+            continue    
+        split_nodes = []
+        nodes = old_node.text.split(delimiter)
+        if len(nodes) % 2 == 0:
+            raise ValueError(f"Unmatched {delimiter} in text.")
+        for i in range(len(nodes)):
+            if nodes[i] == "":
+                continue
+            if i % 2 == 0:
+                split_nodes.append(TextNode(nodes[i], text_type_text))
+            else:
+                split_nodes.append(TextNode(nodes[i], text_type))
+        new_nodes.extend(split_nodes)
     return new_nodes
+
+def split_nodes_image(old_nodes):
+    new_nodes = []
+    for old_node in old_nodes:
+        if old_node.text_type != text_type_text:
+            new_nodes.append(old_node)
+            continue
+        text = old_node.text
+        images = extract_markdown_images(text)
+        if len(images) == 0:
+            new_nodes.append(old_node)
+            continue
+        for image in images:
+            node = text.split(f"![{image[0]}]({image[1]})", 1)
+            if len(node) != 2:
+                raise ValueError("Invalid markdown, image not closed")
+            if node[0] != "":
+                new_nodes.append(TextNode(node[0], text_type_text))
+            new_nodes.append(TextNode(image[0], text_type_image, image[1]))
+            text = node[1]
+        if text != "":
+            new_nodes.append(TextNode(text, text_type_text))
+    return new_nodes
+
+def split_nodes_link(old_nodes):
+    new_nodes = []
+    for old_node in old_nodes:
+        if old_node.text_type != text_type_text:
+            new_nodes.append(old_node)
+            continue
+        text = old_node.text
+        links = extract_markdown_links(text)
+        if len(links) == 0:
+            new_nodes.append(old_node)
+            continue
+        for link in links:
+            node = text.split(f"[{link[0]}]({link[1]})", 1)
+            if len(node) != 2:
+                raise ValueError("Invalid markdown, link section closed")
+            if node[0] != "":
+                new_nodes.append(TextNode(node[0], text_type_text))
+            new_nodes.append(TextNode(link[0], text_type_link, link[1]))
+            text = node[1]
+        if text != "":
+            new_nodes.append(TextNode(text, text_type_text))
+    return new_nodes
+
+def text_to_textnodes(text):
+    new_node = [TextNode(text, text_type_text)]
+    new_node = split_nodes_delimiter(new_node, "**", text_type_bold)
+    new_node = split_nodes_delimiter(new_node, "*", text_type_italic)
+    new_node = split_nodes_delimiter(new_node, "`", text_type_code)
+    new_node = split_nodes_image(new_node)
+    new_node = split_nodes_link(new_node)
+    return new_node
